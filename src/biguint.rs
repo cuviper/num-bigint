@@ -2361,14 +2361,16 @@ impl BigUint {
         self.data.extend_from_slice(slice);
 
         #[cfg(u64_digit)]
-        self.data.extend(slice.chunks(2).map(|chunk| {
-            // raw could have odd length
-            let mut digit = BigDigit::from(chunk[0]);
-            if let Some(&hi) = chunk.get(1) {
-                digit |= BigDigit::from(hi) << 32;
+        {
+            self.data.reserve(slice.len().div_ceil(&2));
+            let chunks = slice.chunks_exact(2);
+            let remainder = chunks.remainder();
+            let digits = chunks.map(|c| (u64::from(c[1]) << 32) | u64::from(c[0]));
+            self.data.extend(digits);
+            if let &[tail] = remainder {
+                self.data.push(tail.into());
             }
-            digit
-        }));
+        }
 
         self.normalize();
     }
